@@ -1,0 +1,7 @@
+torch
+torchvision
+pillow
+# Only needed for --engine pretrained:
+# diffusers
+# transformers
+# accelerate
