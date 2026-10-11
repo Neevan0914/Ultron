@@ -63,7 +63,7 @@ def main():
     ema = copy.deepcopy(model).eval().requires_grad_(False)
     opt = torch.optim.AdamW(model.parameters(), lr=args.lr)
     diffusion = Diffusion(device=device)
-    start_epoch = 0
+    start_epoch, global_step = 0, 0
 
     if args.resume and args.out.exists():
         ckpt = torch.load(args.out, map_location=device)
@@ -71,6 +71,7 @@ def main():
         ema.load_state_dict(ckpt["ema"])
         opt.load_state_dict(ckpt["opt"])
         start_epoch = ckpt["epoch"]
+        global_step = ckpt.get("step", start_epoch * len(loader))
         print(f"Resumed from epoch {start_epoch}")
 
     print(f"Model has {sum(p.numel() for p in model.parameters()) / 1e6:.1f}M parameters")
@@ -86,16 +87,19 @@ def main():
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             opt.step()
+            global_step += 1
+            # Warm the EMA up so short runs aren't dominated by the random starting weights.
+            decay = min(0.999, (1 + global_step) / (10 + global_step))
             with torch.no_grad():
                 for e, m in zip(ema.parameters(), model.parameters()):
-                    e.lerp_(m, 1 - 0.999)
+                    e.lerp_(m, 1 - decay)
             total += loss.item()
             if step % 100 == 0:
                 print(f"  epoch {epoch + 1} step {step}/{len(loader)} loss {loss.item():.4f}")
 
         print(f"epoch {epoch + 1}/{args.epochs}  avg loss {total / len(loader):.4f}")
         torch.save({"model": model.state_dict(), "ema": ema.state_dict(), "opt": opt.state_dict(),
-                    "epoch": epoch + 1, "config": config, "class_names": class_names}, args.out)
+                    "epoch": epoch + 1, "step": global_step, "config": config, "class_names": class_names}, args.out)
 
     print(f"Saved model to {args.out}")
     print(json.dumps({"subjects": class_names}))
