@@ -8,6 +8,11 @@ python generate.py "Generate me 50 dragon pictures"
 
 The images go in `outputs/dragon_<time>/`, along with a `grid.png` that shows all of them at once.
 
+Here's what came out of `"Generate me 50 circle pictures"`, `"... square ..."` and `"... triangle ..."` after training
+on the built-in shapes demo for about 20 minutes on a laptop CPU:
+
+![50 circles, 50 squares and 50 triangles drawn by Ultron](docs/demo_shapes.png)
+
 ## How it works
 
 Ultron is a **diffusion model**, the same kind of neural network that Stable Diffusion and DALL·E use.
